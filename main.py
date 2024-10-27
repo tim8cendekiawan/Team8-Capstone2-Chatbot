@@ -1,9 +1,11 @@
 from openai import OpenAI
 import tiktoken
+import requests
 import os
 import streamlit as st
 
-DEFAULT_API_KEY = os.environ.get("TOGETHER_API_KEY")
+# DEFAULT_API_KEY = os.environ.get("TOGETHER_API_KEY")
+DEFAULT_API_KEY = "2e0046651d2d0394a74f84b2f6759323f71ac87b1933ab16169c114e733f9b9b"
 DEFAULT_BASE_URL = "https://api.together.xyz/v1"
 DEFAULT_MODEL = "meta-llama/Llama-Vision-Free"
 DEFAULT_TEMPERATURE = 0.7
@@ -78,8 +80,32 @@ class ConversationManager:
     def reset_conversation_history(self):
         self.conversation_history = [{"role": "system", "content": self.system_message}]
 
+def get_instance_id():
+    """Retrieve the EC2 instance ID from AWS metadata using IMDSv2."""
+    try:
+        # Step 1: Get the token
+        token = requests.put(
+            "http://169.254.169.254/latest/api/token",
+            headers={"X-aws-ec2-metadata-token-ttl-seconds": "21600"},
+            timeout=1
+        ).text
+
+        # Step 2: Use the token to get the instance ID
+        instance_id = requests.get(
+            "http://169.254.169.254/latest/meta-data/instance-id",
+            headers={"X-aws-ec2-metadata-token": token},
+            timeout=1
+        ).text
+        return instance_id
+    except requests.exceptions.RequestException:
+        return "Instance ID not available (running locally or error in retrieval)"
+
 ### Streamlit code ###
 st.title("AI Chatbot")
+
+# Display EC2 Instance ID
+instance_id = get_instance_id()
+st.write(f"**EC2 Instance ID**: {instance_id}")
 
 # Initialize the ConversationManager object
 if 'chat_manager' not in st.session_state:
